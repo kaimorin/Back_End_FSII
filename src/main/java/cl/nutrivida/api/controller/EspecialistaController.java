@@ -1,5 +1,6 @@
 package cl.nutrivida.api.controller;
 
+import cl.nutrivida.api.dto.EspecialistaDTO;
 import cl.nutrivida.api.model.Especialista;
 import cl.nutrivida.api.service.EspecialistaService;
 import jakarta.validation.Valid;
@@ -19,35 +20,27 @@ public class EspecialistaController {
     }
 
     @GetMapping
-    public List<Especialista> listar() {
-        return service.listarTodos();
-    }
+    public List<Especialista> listar() { return service.listarTodos(); }
 
     @GetMapping("/activos")
-    public List<Especialista> activos() {
-        return service.listarActivos();
-    }
+    public List<Especialista> activos() { return service.listarActivos(); }
 
     @GetMapping("/{id}")
-    public Especialista obtener(@PathVariable Long id) {
-        return service.obtenerPorId(id);
-    }
+    public Especialista obtener(@PathVariable Long id) { return service.obtenerPorId(id); }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Especialista crear(@Valid @RequestBody Especialista especialista) {
-        return service.crear(especialista);
+    public Especialista crear(@Valid @RequestBody EspecialistaDTO dto) {
+        return service.crear(dto);
     }
 
     @PutMapping("/{id}")
     public Especialista actualizar(@PathVariable Long id,
-                                   @Valid @RequestBody Especialista datos) {
-        return service.actualizar(id, datos);
+                                   @Valid @RequestBody EspecialistaDTO dto) {
+        return service.actualizar(id, dto);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void eliminar(@PathVariable Long id) {
-        service.eliminar(id);
-    }
+    public void eliminar(@PathVariable Long id) { service.eliminar(id); }
 }

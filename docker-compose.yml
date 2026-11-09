@@ -1,39 +1,43 @@
 version: "3.9"
 
 services:
-  # ── Backend Spring Boot ─────────────────────────────────────────────
-  api:
+
+  # ── Microservicio Spring Boot ───────────────────────────────────────
+  ms-nutrivida:
     build: .
+    container_name: ms-nutrivida
     ports:
-      - "8080:8080"
+      - "9005:9005"
     environment:
-      SPRING_PROFILES_ACTIVE: prod
-      DB_HOST: db
-      DB_NAME: nutrivida
-      DB_USER: nutrivida
-      DB_PASSWORD: nutrivida123
+      DB_URL: jdbc:mysql://db:3306/nutrivida?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DB_USERNAME: admin
+      DB_PASSWORD: yvanni123
+      SERVER_PORT: 9005
       CORS_ORIGIN: http://localhost:5173
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
 
-  # ── MySQL 8 ─────────────────────────────────────────────────────────
+  # ── MySQL 8 ────────────────────────────────────────────────────────
   db:
     image: mysql:8.0
-    environment:
-      MYSQL_DATABASE: nutrivida
-      MYSQL_USER: nutrivida
-      MYSQL_PASSWORD: nutrivida123
-      MYSQL_ROOT_PASSWORD: root123
+    container_name: nutrivida-db
     ports:
       - "3306:3306"
+    environment:
+      MYSQL_DATABASE: nutrivida
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: yvanni123
+      MYSQL_ROOT_PASSWORD: root123
+    volumes:
+      - nutrivida_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
-    volumes:
-      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
 
 volumes:
-  mysql_data:
+  nutrivida_data:

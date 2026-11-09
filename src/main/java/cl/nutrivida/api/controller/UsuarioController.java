@@ -1,14 +1,15 @@
 package cl.nutrivida.api.controller;
 
+import cl.nutrivida.api.dto.LoginDTO;
+import cl.nutrivida.api.dto.UsuarioActualizarDTO;
+import cl.nutrivida.api.dto.UsuarioRegistroDTO;
 import cl.nutrivida.api.model.Usuario;
 import cl.nutrivida.api.service.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -27,32 +28,32 @@ public class UsuarioController {
 
     @GetMapping("/{id}")
     public Usuario obtener(@PathVariable Long id) {
-        return service.obtenerPorId(id);
+        Usuario u = service.obtenerPorId(id);
+        u.setClave(null);
+        return u;
     }
 
     @PostMapping("/registro")
     @ResponseStatus(HttpStatus.CREATED)
-    public Usuario registrar(@Valid @RequestBody Usuario usuario) {
-        Usuario guardado = service.registrar(usuario);
-        guardado.setClave(null);
-        return guardado;
+    public Usuario registrar(@Valid @RequestBody UsuarioRegistroDTO dto) {
+        Usuario u = service.registrar(dto);
+        u.setClave(null);
+        return u;
     }
 
     @PostMapping("/login")
-    public Usuario login(@RequestBody Map<String, String> credenciales) {
-        Usuario usuario = service.login(
-                credenciales.get("correo"),
-                credenciales.get("clave")
-        );
-        usuario.setClave(null);
-        return usuario;
+    public Usuario login(@Valid @RequestBody LoginDTO dto) {
+        Usuario u = service.login(dto);
+        u.setClave(null);
+        return u;
     }
 
     @PutMapping("/{id}")
-    public Usuario actualizar(@PathVariable Long id, @Valid @RequestBody Usuario datos) {
-        Usuario usuario = service.actualizar(id, datos);
-        usuario.setClave(null);
-        return usuario;
+    public Usuario actualizar(@PathVariable Long id,
+                              @Valid @RequestBody UsuarioActualizarDTO dto) {
+        Usuario u = service.actualizar(id, dto);
+        u.setClave(null);
+        return u;
     }
 
     @DeleteMapping("/{id}")

@@ -1,5 +1,6 @@
 package cl.nutrivida.api.service;
 
+import cl.nutrivida.api.dto.EspecialistaDTO;
 import cl.nutrivida.api.model.Especialista;
 import cl.nutrivida.api.repository.EspecialistaRepository;
 import org.springframework.http.HttpStatus;
@@ -17,13 +18,9 @@ public class EspecialistaService {
         this.repository = repository;
     }
 
-    public List<Especialista> listarTodos() {
-        return repository.findAll();
-    }
+    public List<Especialista> listarTodos() { return repository.findAll(); }
 
-    public List<Especialista> listarActivos() {
-        return repository.findByActivoTrue();
-    }
+    public List<Especialista> listarActivos() { return repository.findByActivoTrue(); }
 
     public Especialista obtenerPorId(Long id) {
         return repository.findById(id)
@@ -31,25 +28,29 @@ public class EspecialistaService {
                         HttpStatus.NOT_FOUND, "Especialista no encontrado"));
     }
 
-    public Especialista crear(Especialista especialista) {
-        especialista.setId(null);
-        return repository.save(especialista);
+    public Especialista crear(EspecialistaDTO dto) {
+        Especialista e = new Especialista();
+        e.setNombre(dto.getNombre());
+        e.setEspecialidad(dto.getEspecialidad());
+        e.setModalidad(dto.getModalidad());
+        e.setDescripcion(dto.getDescripcion());
+        e.setActivo(dto.isActivo());
+        return repository.save(e);
     }
 
-    public Especialista actualizar(Long id, Especialista datos) {
-        Especialista especialista = obtenerPorId(id);
-        especialista.setNombre(datos.getNombre());
-        especialista.setEspecialidad(datos.getEspecialidad());
-        especialista.setModalidad(datos.getModalidad());
-        especialista.setDescripcion(datos.getDescripcion());
-        especialista.setActivo(datos.isActivo());
-        return repository.save(especialista);
+    public Especialista actualizar(Long id, EspecialistaDTO dto) {
+        Especialista e = obtenerPorId(id);
+        e.setNombre(dto.getNombre());
+        e.setEspecialidad(dto.getEspecialidad());
+        e.setModalidad(dto.getModalidad());
+        e.setDescripcion(dto.getDescripcion());
+        e.setActivo(dto.isActivo());
+        return repository.save(e);
     }
 
     public void eliminar(Long id) {
-        if (!repository.existsById(id)) {
+        if (!repository.existsById(id))
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Especialista no encontrado");
-        }
         repository.deleteById(id);
     }
 }

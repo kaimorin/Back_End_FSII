@@ -1,5 +1,6 @@
 package cl.nutrivida.api.service;
 
+import cl.nutrivida.api.dto.CitaDTO;
 import cl.nutrivida.api.model.Cita;
 import cl.nutrivida.api.repository.CitaRepository;
 import org.springframework.http.HttpStatus;
@@ -17,9 +18,7 @@ public class CitaService {
         this.repository = repository;
     }
 
-    public List<Cita> listarTodas() {
-        return repository.findAll();
-    }
+    public List<Cita> listarTodas() { return repository.findAll(); }
 
     public Cita obtenerPorId(Long id) {
         return repository.findById(id)
@@ -27,45 +26,51 @@ public class CitaService {
                         HttpStatus.NOT_FOUND, "Cita no encontrada"));
     }
 
-    public List<Cita> porEstado(String estado) {
-        return repository.findByEstado(estado);
-    }
+    public List<Cita> porEstado(String estado) { return repository.findByEstado(estado); }
 
-    public List<Cita> porPaciente(String rut) {
-        return repository.findByPacienteRut(rut);
-    }
+    public List<Cita> porPaciente(String rut) { return repository.findByPacienteRut(rut); }
 
-    public Cita crear(Cita cita) {
-        cita.setId(null);
+    public Cita crear(CitaDTO dto) {
+        Cita cita = new Cita();
+        cita.setDoctor(dto.getDoctor());
+        cita.setEspecialidad(dto.getEspecialidad());
+        cita.setModalidad(dto.getModalidad());
+        cita.setFecha(dto.getFecha());
+        cita.setHora(dto.getHora());
+        cita.setMetodoPago(dto.getMetodoPago());
+        cita.setPacienteNombre(dto.getPacienteNombre());
+        cita.setPacienteApellido(dto.getPacienteApellido());
+        cita.setPacienteRut(dto.getPacienteRut());
+        cita.setPacienteTelefono(dto.getPacienteTelefono());
+        // Estado y precioBase siempre los fija el backend
         cita.setEstado("Pendiente");
+        cita.setPrecioBase(35000);
         return repository.save(cita);
     }
 
     public Cita cambiarEstado(Long id, String nuevoEstado) {
-        if (nuevoEstado == null || nuevoEstado.isBlank()) {
+        if (nuevoEstado == null || nuevoEstado.isBlank())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El estado no puede estar vacío");
-        }
         Cita cita = obtenerPorId(id);
         cita.setEstado(nuevoEstado);
         return repository.save(cita);
     }
 
-    public Cita actualizar(Long id, Cita datos) {
+    public Cita actualizar(Long id, CitaDTO dto) {
         Cita cita = obtenerPorId(id);
-        cita.setDoctor(datos.getDoctor());
-        cita.setEspecialidad(datos.getEspecialidad());
-        cita.setModalidad(datos.getModalidad());
-        cita.setFecha(datos.getFecha());
-        cita.setHora(datos.getHora());
-        cita.setMetodoPago(datos.getMetodoPago());
-        cita.setEstado(datos.getEstado());
+        cita.setDoctor(dto.getDoctor());
+        cita.setEspecialidad(dto.getEspecialidad());
+        cita.setModalidad(dto.getModalidad());
+        cita.setFecha(dto.getFecha());
+        cita.setHora(dto.getHora());
+        cita.setMetodoPago(dto.getMetodoPago());
+        // estado no se toca aquí, usa el endpoint PATCH /estado
         return repository.save(cita);
     }
 
     public void eliminar(Long id) {
-        if (!repository.existsById(id)) {
+        if (!repository.existsById(id))
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cita no encontrada");
-        }
         repository.deleteById(id);
     }
 }

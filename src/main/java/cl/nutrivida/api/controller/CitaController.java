@@ -1,5 +1,6 @@
 package cl.nutrivida.api.controller;
 
+import cl.nutrivida.api.dto.CitaDTO;
 import cl.nutrivida.api.model.Cita;
 import cl.nutrivida.api.service.CitaService;
 import jakarta.validation.Valid;
@@ -20,29 +21,21 @@ public class CitaController {
     }
 
     @GetMapping
-    public List<Cita> listar() {
-        return service.listarTodas();
-    }
+    public List<Cita> listar() { return service.listarTodas(); }
 
     @GetMapping("/{id}")
-    public Cita obtener(@PathVariable Long id) {
-        return service.obtenerPorId(id);
-    }
+    public Cita obtener(@PathVariable Long id) { return service.obtenerPorId(id); }
 
     @GetMapping("/estado/{estado}")
-    public List<Cita> porEstado(@PathVariable String estado) {
-        return service.porEstado(estado);
-    }
+    public List<Cita> porEstado(@PathVariable String estado) { return service.porEstado(estado); }
 
     @GetMapping("/paciente/{rut}")
-    public List<Cita> porPaciente(@PathVariable String rut) {
-        return service.porPaciente(rut);
-    }
+    public List<Cita> porPaciente(@PathVariable String rut) { return service.porPaciente(rut); }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Cita crear(@Valid @RequestBody Cita cita) {
-        return service.crear(cita);
+    public Cita crear(@Valid @RequestBody CitaDTO dto) {
+        return service.crear(dto);
     }
 
     @PatchMapping("/{id}/estado")
@@ -53,13 +46,11 @@ public class CitaController {
 
     @PutMapping("/{id}")
     public Cita actualizar(@PathVariable Long id,
-                           @Valid @RequestBody Cita datos) {
-        return service.actualizar(id, datos);
+                           @Valid @RequestBody CitaDTO dto) {
+        return service.actualizar(id, dto);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void eliminar(@PathVariable Long id) {
-        service.eliminar(id);
-    }
+    public void eliminar(@PathVariable Long id) { service.eliminar(id); }
 }

@@ -1,5 +1,8 @@
 package cl.nutrivida.api.service;
 
+import cl.nutrivida.api.dto.LoginDTO;
+import cl.nutrivida.api.dto.UsuarioActualizarDTO;
+import cl.nutrivida.api.dto.UsuarioRegistroDTO;
 import cl.nutrivida.api.model.Usuario;
 import cl.nutrivida.api.repository.UsuarioRepository;
 import org.springframework.http.HttpStatus;
@@ -27,40 +30,48 @@ public class UsuarioService {
                         HttpStatus.NOT_FOUND, "Usuario no encontrado"));
     }
 
-    public Usuario registrar(Usuario usuario) {
-        if (repository.existsByCorreo(usuario.getCorreo())) {
+    public Usuario registrar(UsuarioRegistroDTO dto) {
+        if (repository.existsByCorreo(dto.getCorreo())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Ya existe una cuenta con ese correo.");
         }
-        if (usuario.getRut() != null && repository.existsByRut(usuario.getRut())) {
+        if (dto.getRut() != null && repository.existsByRut(dto.getRut())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Ya existe una cuenta con ese RUT.");
         }
-        usuario.setId(null);
+        // Mapeo DTO → Entidad (el rol lo fija el backend, nunca el cliente)
+        Usuario usuario = new Usuario();
+        usuario.setNombre(dto.getNombre());
+        usuario.setApellido(dto.getApellido());
+        usuario.setCorreo(dto.getCorreo());
+        usuario.setRut(dto.getRut());
+        usuario.setTelefono(dto.getTelefono());
+        usuario.setRecibirNoticias(dto.isRecibirNoticias());
         usuario.setRol("PACIENTE");
-        // PRODUCCIÓN: usuario.setClave(passwordEncoder.encode(usuario.getClave()));
+        // PRODUCCIÓN: usuario.setClave(passwordEncoder.encode(dto.getClave()));
+        usuario.setClave(dto.getClave());
         return repository.save(usuario);
     }
 
-    public Usuario login(String correo, String clave) {
-        Usuario usuario = repository.findByCorreo(correo)
+    public Usuario login(LoginDTO dto) {
+        Usuario usuario = repository.findByCorreo(dto.getCorreo())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED, "Correo o contraseña incorrectos."));
-
-        // PRODUCCIÓN: usar BCrypt.matches(clave, usuario.getClave())
-        if (!usuario.getClave().equals(clave)) {
+        // PRODUCCIÓN: BCrypt.matches(dto.getClave(), usuario.getClave())
+        if (!usuario.getClave().equals(dto.getClave())) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED, "Correo o contraseña incorrectos.");
         }
         return usuario;
     }
 
-    public Usuario actualizar(Long id, Usuario datos) {
+    public Usuario actualizar(Long id, UsuarioActualizarDTO dto) {
         Usuario usuario = obtenerPorId(id);
-        usuario.setNombre(datos.getNombre());
-        usuario.setApellido(datos.getApellido());
-        usuario.setTelefono(datos.getTelefono());
-        usuario.setRecibirNoticias(datos.isRecibirNoticias());
+        // Solo los campos permitidos — rol y correo NO se tocan
+        usuario.setNombre(dto.getNombre());
+        usuario.setApellido(dto.getApellido());
+        usuario.setTelefono(dto.getTelefono());
+        usuario.setRecibirNoticias(dto.isRecibirNoticias());
         return repository.save(usuario);
     }
 

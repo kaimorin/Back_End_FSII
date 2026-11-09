@@ -1,5 +1,6 @@
 package cl.nutrivida.api.controller;
 
+import cl.nutrivida.api.dto.PacienteDTO;
 import cl.nutrivida.api.model.Paciente;
 import cl.nutrivida.api.service.PacienteService;
 import jakarta.validation.Valid;
@@ -19,35 +20,27 @@ public class PacienteController {
     }
 
     @GetMapping
-    public List<Paciente> listar() {
-        return service.listarTodos();
-    }
+    public List<Paciente> listar() { return service.listarTodos(); }
 
     @GetMapping("/{id}")
-    public Paciente obtener(@PathVariable Long id) {
-        return service.obtenerPorId(id);
-    }
+    public Paciente obtener(@PathVariable Long id) { return service.obtenerPorId(id); }
 
     @GetMapping("/rut/{rut}")
-    public Paciente porRut(@PathVariable String rut) {
-        return service.obtenerPorRut(rut);
-    }
+    public Paciente porRut(@PathVariable String rut) { return service.obtenerPorRut(rut); }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Paciente crear(@Valid @RequestBody Paciente paciente) {
-        return service.guardar(paciente);
+    public Paciente crear(@Valid @RequestBody PacienteDTO dto) {
+        return service.guardar(dto);
     }
 
     @PutMapping("/{id}")
     public Paciente actualizar(@PathVariable Long id,
-                               @Valid @RequestBody Paciente datos) {
-        return service.actualizar(id, datos);
+                               @Valid @RequestBody PacienteDTO dto) {
+        return service.actualizar(id, dto);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void eliminar(@PathVariable Long id) {
-        service.eliminar(id);
-    }
+    public void eliminar(@PathVariable Long id) { service.eliminar(id); }
 }

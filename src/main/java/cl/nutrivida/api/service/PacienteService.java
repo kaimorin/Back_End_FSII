@@ -1,5 +1,6 @@
 package cl.nutrivida.api.service;
 
+import cl.nutrivida.api.dto.PacienteDTO;
 import cl.nutrivida.api.model.Paciente;
 import cl.nutrivida.api.repository.PacienteRepository;
 import org.springframework.http.HttpStatus;
@@ -17,9 +18,7 @@ public class PacienteService {
         this.repository = repository;
     }
 
-    public List<Paciente> listarTodos() {
-        return repository.findAll();
-    }
+    public List<Paciente> listarTodos() { return repository.findAll(); }
 
     public Paciente obtenerPorId(Long id) {
         return repository.findById(id)
@@ -33,40 +32,33 @@ public class PacienteService {
                         HttpStatus.NOT_FOUND, "Paciente no encontrado"));
     }
 
-    // Upsert: si ya existe el RUT lo actualiza, si no lo crea
-    public Paciente guardar(Paciente paciente) {
-        return repository.findByRut(paciente.getRut())
-                .map(existente -> {
-                    existente.setNombre(paciente.getNombre());
-                    existente.setApellido(paciente.getApellido());
-                    existente.setTelefono(paciente.getTelefono());
-                    existente.setComuna(paciente.getComuna());
-                    existente.setCiudad(paciente.getCiudad());
-                    existente.setPatologias(paciente.getPatologias());
-                    existente.setDestinatario(paciente.getDestinatario());
-                    return repository.save(existente);
-                })
-                .orElseGet(() -> {
-                    paciente.setId(null);
-                    return repository.save(paciente);
-                });
+    // Upsert: actualiza si ya existe el RUT, crea si es nuevo
+    public Paciente guardar(PacienteDTO dto) {
+        return repository.findByRut(dto.getRut())
+                .map(existente -> aplicarDTO(existente, dto))
+                .orElseGet(() -> aplicarDTO(new Paciente(), dto));
     }
 
-    public Paciente actualizar(Long id, Paciente datos) {
-        Paciente paciente = obtenerPorId(id);
-        paciente.setNombre(datos.getNombre());
-        paciente.setApellido(datos.getApellido());
-        paciente.setTelefono(datos.getTelefono());
-        paciente.setComuna(datos.getComuna());
-        paciente.setCiudad(datos.getCiudad());
-        paciente.setPatologias(datos.getPatologias());
-        return repository.save(paciente);
+    public Paciente actualizar(Long id, PacienteDTO dto) {
+        return aplicarDTO(obtenerPorId(id), dto);
     }
 
     public void eliminar(Long id) {
-        if (!repository.existsById(id)) {
+        if (!repository.existsById(id))
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Paciente no encontrado");
-        }
         repository.deleteById(id);
+    }
+
+    // Mapeo DTO → Entidad (nunca toca el id)
+    private Paciente aplicarDTO(Paciente p, PacienteDTO dto) {
+        p.setNombre(dto.getNombre());
+        p.setApellido(dto.getApellido());
+        p.setRut(dto.getRut());
+        p.setTelefono(dto.getTelefono());
+        p.setComuna(dto.getComuna());
+        p.setCiudad(dto.getCiudad());
+        p.setPatologias(dto.getPatologias());
+        p.setDestinatario(dto.getDestinatario());
+        return repository.save(p);
     }
 }

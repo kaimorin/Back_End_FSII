@@ -3,9 +3,6 @@ name: Deploy ms-nutrivida a EC2
 on:
   push:
     branches: [main]
-    paths:
-      - 'ms-nutrivida/**'
-      - '.github/workflows/deploy-ms-nutrivida.yml'
   workflow_dispatch:
 
 jobs:
@@ -23,9 +20,8 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: ${{ secrets.EC2_PORT || 22 }}
-          source: 'ms-nutrivida/'
+          source: '.'
           target: '/home/${{ secrets.EC2_USER }}/micros/ms-nutrivida'
-          strip_components: 1
 
       - name: Build y levantar con Docker Compose
         uses: appleboy/ssh-action@v1.0.3

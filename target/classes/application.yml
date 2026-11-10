@@ -2,13 +2,17 @@ spring:
   application:
     name: ms-nutrivida
   datasource:
-    url: ${DB_URL:jdbc:mysql://<rds>:3306/nutrivida?...}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL:jdbc:mysql://db:3306/nutrivida?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:admin}
+    password: ${DB_PASSWORD:yvanni123}
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
+    defer-datasource-initialization: true
+  sql:
+    init:
+      mode: always
 
 server:
   port: ${SERVER_PORT:9005}

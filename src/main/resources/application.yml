@@ -19,4 +19,4 @@ server:
 
 app:
   cors:
-    allowed-origin: ${CORS_ORIGIN:http://localhost:5173}
+    allowed-origin: ${CORS_ORIGIN:http://100.55.18.66:5173}

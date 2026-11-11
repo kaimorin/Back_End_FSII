@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -21,19 +22,19 @@ public class UsuarioController {
         this.service = service;
     }
 
-    @GetMapping
+    @GetMapping("/listar")                     // solo ADMIN
     public List<Usuario> listar() {
         return service.listarTodos();
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id}")             // autenticado
     public Usuario obtener(@PathVariable Long id) {
         Usuario u = service.obtenerPorId(id);
         u.setClave(null);
         return u;
     }
 
-    @PostMapping("/registro")
+    @PostMapping("/registro")        // público
     @ResponseStatus(HttpStatus.CREATED)
     public Usuario registrar(@Valid @RequestBody UsuarioRegistroDTO dto) {
         Usuario u = service.registrar(dto);
@@ -41,14 +42,12 @@ public class UsuarioController {
         return u;
     }
 
-    @PostMapping("/login")
-    public Usuario login(@Valid @RequestBody LoginDTO dto) {
-        Usuario u = service.login(dto);
-        u.setClave(null);
-        return u;
+    @PostMapping("/login")           // público → devuelve token + datos
+    public Map<String, Object> login(@Valid @RequestBody LoginDTO dto) {
+        return service.login(dto);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id}")             // autenticado
     public Usuario actualizar(@PathVariable Long id,
                               @Valid @RequestBody UsuarioActualizarDTO dto) {
         Usuario u = service.actualizar(id, dto);
@@ -56,7 +55,7 @@ public class UsuarioController {
         return u;
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id}")          // solo ADMIN
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void eliminar(@PathVariable Long id) {
         service.eliminar(id);

@@ -1,0 +1,18 @@
+# Maven
+target/
+*.jar
+*.war
+
+# Entorno
+.env
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+
+# GitHub Modernize (auto-generado por herramientas de GitHub, no necesario en repo)
+.github/modernize/

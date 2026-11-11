@@ -1,4 +1,5 @@
 services:
+
   ms-nutrivida:
     build: .
     container_name: ms-nutrivida
@@ -7,9 +8,11 @@ services:
     environment:
       DB_URL: jdbc:mysql://db:3306/nutrivida?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       DB_USERNAME: admin
-      DB_PASSWORD: yvanni123
+      DB_PASSWORD: ${DB_PASSWORD}
       SERVER_PORT: 9005
-      CORS_ORIGIN: http://localhost:5173
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_MS: 86400000
     depends_on:
       db:
         condition: service_healthy
@@ -23,8 +26,8 @@ services:
     environment:
       MYSQL_DATABASE: nutrivida
       MYSQL_USER: admin
-      MYSQL_PASSWORD: yvanni123
-      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     volumes:
       - nutrivida_data:/var/lib/mysql
     healthcheck:

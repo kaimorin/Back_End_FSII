@@ -1,23 +1,29 @@
 package cl.nutrivida.api.service;
 
+import cl.nutrivida.api.config.JwtUtil;
 import cl.nutrivida.api.dto.LoginDTO;
 import cl.nutrivida.api.dto.UsuarioActualizarDTO;
 import cl.nutrivida.api.dto.UsuarioRegistroDTO;
 import cl.nutrivida.api.model.Usuario;
 import cl.nutrivida.api.repository.UsuarioRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class UsuarioService {
 
     private final UsuarioRepository repository;
+    private final JwtUtil jwtUtil;
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    public UsuarioService(UsuarioRepository repository) {
+    public UsuarioService(UsuarioRepository repository, JwtUtil jwtUtil) {
         this.repository = repository;
+        this.jwtUtil    = jwtUtil;
     }
 
     public List<Usuario> listarTodos() {
@@ -31,15 +37,11 @@ public class UsuarioService {
     }
 
     public Usuario registrar(UsuarioRegistroDTO dto) {
-        if (repository.existsByCorreo(dto.getCorreo())) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Ya existe una cuenta con ese correo.");
-        }
-        if (dto.getRut() != null && repository.existsByRut(dto.getRut())) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Ya existe una cuenta con ese RUT.");
-        }
-        // Mapeo DTO → Entidad (el rol lo fija el backend, nunca el cliente)
+        if (repository.existsByCorreo(dto.getCorreo()))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe una cuenta con ese correo.");
+        if (dto.getRut() != null && repository.existsByRut(dto.getRut()))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe una cuenta con ese RUT.");
+
         Usuario usuario = new Usuario();
         usuario.setNombre(dto.getNombre());
         usuario.setApellido(dto.getApellido());
@@ -48,26 +50,32 @@ public class UsuarioService {
         usuario.setTelefono(dto.getTelefono());
         usuario.setRecibirNoticias(dto.isRecibirNoticias());
         usuario.setRol("PACIENTE");
-        // PRODUCCIÓN: usuario.setClave(passwordEncoder.encode(dto.getClave()));
-        usuario.setClave(dto.getClave());
+        usuario.setClave(passwordEncoder.encode(dto.getClave()));
         return repository.save(usuario);
     }
 
-    public Usuario login(LoginDTO dto) {
+    public Map<String, Object> login(LoginDTO dto) {
         Usuario usuario = repository.findByCorreo(dto.getCorreo())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED, "Correo o contraseña incorrectos."));
-        // PRODUCCIÓN: BCrypt.matches(dto.getClave(), usuario.getClave())
-        if (!usuario.getClave().equals(dto.getClave())) {
-            throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED, "Correo o contraseña incorrectos.");
-        }
-        return usuario;
+
+        if (!passwordEncoder.matches(dto.getClave(), usuario.getClave()))
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Correo o contraseña incorrectos.");
+
+        String token = jwtUtil.generarToken(usuario.getCorreo(), usuario.getRol());
+
+        return Map.of(
+                "token",    token,
+                "id",       usuario.getId(),
+                "nombre",   usuario.getNombre(),
+                "apellido", usuario.getApellido(),
+                "correo",   usuario.getCorreo(),
+                "rol",      usuario.getRol()
+        );
     }
 
     public Usuario actualizar(Long id, UsuarioActualizarDTO dto) {
         Usuario usuario = obtenerPorId(id);
-        // Solo los campos permitidos — rol y correo NO se tocan
         usuario.setNombre(dto.getNombre());
         usuario.setApellido(dto.getApellido());
         usuario.setTelefono(dto.getTelefono());
@@ -76,9 +84,8 @@ public class UsuarioService {
     }
 
     public void eliminar(Long id) {
-        if (!repository.existsById(id)) {
+        if (!repository.existsById(id))
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado");
-        }
         repository.deleteById(id);
     }
 }

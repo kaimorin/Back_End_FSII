@@ -35,3 +35,9 @@ VALUES
   ('Maria de Judas',   'nutricion-clinica',   'Presencial',
    'Miércoles, 19 de febrero de 2025', '11:00 AM', 'webpay',      'Atendido',
    'Lucas', 'Gómez',   '12.345.678-9', '+56 9 1111 1111', 35000);
+
+-- ── Usuario admin de ejemplo ─────────────────────────────────────────
+-- Contraseña: Admin1234!  (BCrypt hash — NO es texto plano)
+INSERT INTO usuarios (nombre, apellido, correo, rut, telefono, recibir_noticias, rol, clave)
+VALUES ('Admin', 'Sistema', 'admin@nutrivida.cl', '11.111.111-1', '+56 9 0000 0000', false, 'ADMIN',
+        '$2a$10$8K1p/a0dL1LXMIgoEDFrwOXaiCBG.WzFtAjMrPvM4RFO3RfEKvmHm');

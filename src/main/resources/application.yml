@@ -1,22 +1,64 @@
+# ── Configuración base (aplica a todos los perfiles) ─────────────────────────
 spring:
   application:
     name: ms-nutrivida
-  datasource:
-    url: ${DB_URL:jdbc:mysql://db:3306/nutrivida?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
-    username: ${DB_USERNAME:admin}
-    password: ${DB_PASSWORD:yvanni123}
   jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    defer-datasource-initialization: true
-  sql:
-    init:
-      mode: always
+    show-sql: false
 
 server:
   port: ${SERVER_PORT:9005}
 
 app:
   cors:
-    allowed-origin: ${CORS_ORIGIN:http://100.55.18.66:5173}
+    allowed-origin: ${CORS_ORIGIN:http://localhost:5173}
+  jwt:
+    secret: ${JWT_SECRET:nutrivida-super-secret-key-must-be-at-least-32-chars}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+---
+# ── Perfil DEV: H2 en memoria, sin instalar nada ─────────────────────────────
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:h2:mem:nutrivida
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    defer-datasource-initialization: true
+  sql:
+    init:
+      mode: always
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+---
+# ── Perfil default (Docker / prod): MySQL ────────────────────────────────────
+spring:
+  config:
+    activate:
+      on-profile: "!dev"
+  datasource:
+    url: ${DB_URL:jdbc:mysql://db:3306/nutrivida?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:admin}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    defer-datasource-initialization: true
+  sql:
+    init:
+      mode: always

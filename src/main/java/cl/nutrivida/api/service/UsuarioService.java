@@ -7,6 +7,10 @@ import cl.nutrivida.api.dto.UsuarioRegistroDTO;
 import cl.nutrivida.api.model.Usuario;
 import cl.nutrivida.api.repository.UsuarioRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -15,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-public class UsuarioService {
+public class UsuarioService implements UserDetailsService {
 
     private final UsuarioRepository repository;
     private final JwtUtil jwtUtil;
@@ -26,6 +30,21 @@ public class UsuarioService {
         this.jwtUtil    = jwtUtil;
     }
 
+    // ── Spring Security ───────────────────────────────────────────────
+    @Override
+    public UserDetails loadUserByUsername(String correo) throws UsernameNotFoundException {
+        Usuario usuario = repository.findByCorreo(correo)
+                .orElseThrow(() -> new UsernameNotFoundException(
+                        "Usuario no encontrado: " + correo));
+
+        return new org.springframework.security.core.userdetails.User(
+                usuario.getCorreo(),
+                usuario.getClave(),
+                List.of(new SimpleGrantedAuthority("ROLE_" + usuario.getRol()))
+        );
+    }
+
+    // ── Lógica de negocio ─────────────────────────────────────────────
     public List<Usuario> listarTodos() {
         return repository.findAll();
     }

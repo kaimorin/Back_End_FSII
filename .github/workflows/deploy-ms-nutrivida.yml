@@ -25,15 +25,26 @@ jobs:
       - name: Build JAR (skip tests)
         run: mvn -q -B clean package -DskipTests
 
-      # ── 3. Subir solo los artefactos de despliegue ─────────────────────
-      - name: Copiar artefactos a EC2
+      # ── 3a. Subir docker-compose.yml y Dockerfile ──────────────────────
+      - name: Copiar archivos de configuración a EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: ${{ secrets.EC2_PORT || 22 }}
-          source: "target/app.jar,docker-compose.yml,Dockerfile"
+          source: "docker-compose.yml,Dockerfile"
+          target: "/home/${{ secrets.EC2_USER }}/micros/ms-nutrivida"
+
+      # ── 3b. Subir el JAR (strip_components quita el prefijo "target/") ──
+      - name: Copiar JAR a EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_PORT || 22 }}
+          source: "target/app.jar"
           target: "/home/${{ secrets.EC2_USER }}/micros/ms-nutrivida"
           strip_components: 1
 
@@ -49,7 +60,7 @@ jobs:
             cd /home/${{ secrets.EC2_USER }}/micros/ms-nutrivida
 
             # Escribir .env con todas las variables sensibles
-            cat > .env << 'ENVEOF'
+            cat > .env << ENVEOF
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}

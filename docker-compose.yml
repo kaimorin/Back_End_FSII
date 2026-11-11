@@ -9,6 +9,7 @@ services:
       DB_URL: jdbc:mysql://db:3306/nutrivida?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       DB_USERNAME: admin
       DB_PASSWORD: ${DB_PASSWORD}
+      DB_DRIVER: com.mysql.cj.jdbc.Driver
       SERVER_PORT: 9005
       CORS_ORIGIN: ${CORS_ORIGIN}
       JWT_SECRET: ${JWT_SECRET}

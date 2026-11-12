@@ -43,7 +43,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,  "/api/especialistas/activos").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
-                .requestMatchers("/error").permitAll() 
+                .requestMatchers("/error").permitAll()
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
                 // ── Solo ADMIN ────────────────────────────────────────
                 .requestMatchers(HttpMethod.GET,    "/api/usuarios/listar").hasRole("ADMIN")  // ← ruta corregida

@@ -60,5 +60,5 @@ WHERE NOT EXISTS (SELECT 1 FROM citas WHERE paciente_rut = '12.345.678-9' AND ho
 -- El de Claude puede ser inventado. Tu JWT_SECRET del .env NO va aquí.
 INSERT INTO usuarios (nombre, apellido, correo, rut, telefono, recibir_noticias, rol, clave)
 SELECT 'Admin', 'Sistema', 'admin@nutrivida.cl', '11.111.111-1', '+56 9 0000 0000', false, 'ADMIN',
-       '$2a$10$8K1p/a0dL1LXMIgoEDFrwOXaiCBG.WzFtAjMrPvM4RFO3RfEKvmHm'
+       '$2a$10$S2Hda4YeEgSVLt7T9m5xqueyVTR2KJXQxUendObaiS5aDvMrh3Lmq'
 WHERE NOT EXISTS (SELECT 1 FROM usuarios WHERE correo = 'admin@nutrivida.cl');

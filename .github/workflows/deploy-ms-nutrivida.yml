@@ -66,10 +66,44 @@ jobs:
             CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}
             ENVEOF
 
-            docker compose down
-            docker compose up -d --build
+            # ── FIX: Apagar buildkit/bake (tu EC2 no tiene buildx) ──
+            export DOCKER_BUILDKIT=0
+            export COMPOSE_BAKE=false
 
-            # Verificar que el contenedor levantó
-            sleep 15
+            echo "=== Espacio en disco ==="
+            df -h /
+
+            echo "=== Bajando contenedores ==="
+            docker compose down || true
+
+            echo "=== Limpiando caché roto de Docker (SIN borrar volúmenes/DB) ==="
+            docker system prune -f
+            docker builder prune -f || true
+
+            echo "=== Build sin caché ==="
+            docker compose build --no-cache || {
+              echo "Primer build falló, reintentando con limpieza total..."
+              docker system prune -af
+              docker compose build --no-cache
+            }
+
+            echo "=== Levantando ==="
+            docker compose up -d
+
+            # Verificar que el contenedor levantó - espera hasta 60s
+            echo "=== Esperando healthcheck ==="
+            for i in $(seq 1 12); do
+              if curl -sf http://localhost:9005/actuator/health > /dev/null; then
+                echo " App UP en intento $i"
+                docker compose ps
+                exit 0
+              fi
+              echo "Intento $i/12: aún no levanta, esperando 5s..."
+              sleep 5
+            done
+
+            echo " App no levantó, logs:"
             docker compose ps
-            curl -sf http://localhost:9005/actuator/health || (docker compose logs ms-nutrivida --tail 50 && exit 1)
+            docker compose logs ms-nutrivida --tail 100
+            docker compose logs nutrivida-db --tail 30
+            exit 1

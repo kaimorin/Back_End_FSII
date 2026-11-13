@@ -4,6 +4,7 @@ import cl.nutrivida.api.config.JwtUtil;
 import cl.nutrivida.api.dto.LoginDTO;
 import cl.nutrivida.api.dto.UsuarioActualizarDTO;
 import cl.nutrivida.api.dto.UsuarioRegistroDTO;
+import cl.nutrivida.api.model.RefreshToken;
 import cl.nutrivida.api.model.Usuario;
 import cl.nutrivida.api.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +37,9 @@ class UsuarioServiceTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private RefreshTokenService refreshTokenService;  // ← faltaba este mock
 
     @InjectMocks
     private UsuarioService usuarioService;
@@ -118,15 +122,20 @@ class UsuarioServiceTest {
         dto.setCorreo("juan@test.cl");
         dto.setClave("Pass1234!");
 
+        RefreshToken refreshTokenMock = new RefreshToken();
+        refreshTokenMock.setToken("refresh.token.mock");
+
         when(usuarioRepository.findByCorreo("juan@test.cl")).thenReturn(Optional.of(usuarioEjemplo));
         when(passwordEncoder.matches("Pass1234!", "$2a$10$hashBcryptFalso")).thenReturn(true);
         when(jwtUtil.generarToken("juan@test.cl", "PACIENTE")).thenReturn("jwt.token.mock");
+        when(refreshTokenService.crear("juan@test.cl")).thenReturn(refreshTokenMock); // ← mock del refresh
 
         Map<String, Object> resultado = usuarioService.login(dto);
 
         assertThat(resultado).containsKey("token");
         assertThat(resultado.get("token")).isEqualTo("jwt.token.mock");
         assertThat(resultado.get("rol")).isEqualTo("PACIENTE");
+        assertThat(resultado).containsKey("refreshToken");
     }
 
     @Test

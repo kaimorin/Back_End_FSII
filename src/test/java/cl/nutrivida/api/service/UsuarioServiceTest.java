@@ -39,7 +39,7 @@ class UsuarioServiceTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
-    private RefreshTokenService refreshTokenService;  // ← faltaba este mock
+    private RefreshTokenService refreshTokenService;
 
     @InjectMocks
     private UsuarioService usuarioService;
@@ -128,7 +128,7 @@ class UsuarioServiceTest {
         when(usuarioRepository.findByCorreo("juan@test.cl")).thenReturn(Optional.of(usuarioEjemplo));
         when(passwordEncoder.matches("Pass1234!", "$2a$10$hashBcryptFalso")).thenReturn(true);
         when(jwtUtil.generarToken("juan@test.cl", "PACIENTE")).thenReturn("jwt.token.mock");
-        when(refreshTokenService.crear("juan@test.cl")).thenReturn(refreshTokenMock); // ← mock del refresh
+        when(refreshTokenService.crear("juan@test.cl")).thenReturn(refreshTokenMock);
 
         Map<String, Object> resultado = usuarioService.login(dto);
 
@@ -160,7 +160,7 @@ class UsuarioServiceTest {
         dto.setClave("ClaveWrong!");
 
         when(usuarioRepository.findByCorreo("juan@test.cl")).thenReturn(Optional.of(usuarioEjemplo));
-        when(passwordEncoder.matches("ClaveWrong!", anyString())).thenReturn(false);
+        when(passwordEncoder.matches(eq("ClaveWrong!"), anyString())).thenReturn(false);  // ← fix
 
         assertThatThrownBy(() -> usuarioService.login(dto))
                 .isInstanceOf(ResponseStatusException.class)

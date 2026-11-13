@@ -125,7 +125,7 @@ class CitaServiceTest {
     void cambiarEstado_conEstadoVacio_lanza400() {
         assertThatThrownBy(() -> citaService.cambiarEstado(1L, ""))
                 .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("estado no puede estar vacío");
+                .hasMessageContaining("El estado no puede estar vacío");  // ← fix
     }
 
     @Test

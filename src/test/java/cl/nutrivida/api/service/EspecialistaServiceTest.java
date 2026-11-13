@@ -91,9 +91,6 @@ class EspecialistaServiceTest {
     @Test
     @DisplayName("listarActivos devuelve solo los especialistas con activo=true")
     void listarActivos_soloDevuelveActivos() {
-        Especialista inactivo = new Especialista();
-        inactivo.setActivo(false);
-
         when(especialistaRepository.findByActivoTrue()).thenReturn(List.of(especialistaEjemplo));
 
         List<Especialista> resultado = especialistaService.listarActivos();

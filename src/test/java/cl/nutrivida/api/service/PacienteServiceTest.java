@@ -74,7 +74,6 @@ class PacienteServiceTest {
         Paciente resultado = pacienteService.guardar(pacienteDtoEjemplo);
 
         assertThat(resultado.getCiudad()).isEqualTo("Valparaíso");
-        // Debe reutilizar el mismo objeto, no crear uno nuevo
         assertThat(resultado.getId()).isEqualTo(1L);
     }
 

@@ -83,7 +83,6 @@ public class UsuarioService implements UserDetailsService {
 
     /**
      * Autentica al usuario y devuelve accessToken (15 min) + refreshToken (7 días).
-     * La clave "token" se mantiene por compatibilidad con el frontend existente.
      */
     public Map<String, Object> login(LoginDTO dto) {
         Usuario usuario = repository.findByCorreo(dto.getCorreo())
@@ -97,8 +96,7 @@ public class UsuarioService implements UserDetailsService {
         RefreshToken refreshToken = refreshTokenService.crear(usuario.getCorreo());
 
         Map<String, Object> respuesta = new HashMap<>();
-        respuesta.put("token",        accessToken);   // ← compatibilidad con frontend
-        respuesta.put("accessToken",  accessToken);   // ← nombre semántico
+        respuesta.put("accessToken",  accessToken);
         respuesta.put("refreshToken", refreshToken.getToken());
         respuesta.put("id",           usuario.getId());
         respuesta.put("nombre",       usuario.getNombre());
@@ -122,7 +120,6 @@ public class UsuarioService implements UserDetailsService {
         String nuevoAccessToken = jwtUtil.generarToken(usuario.getCorreo(), usuario.getRol());
 
         return Map.of(
-                "token",       nuevoAccessToken,
                 "accessToken", nuevoAccessToken
         );
     }

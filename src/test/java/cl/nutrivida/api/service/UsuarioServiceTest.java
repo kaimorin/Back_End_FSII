@@ -116,7 +116,7 @@ class UsuarioServiceTest {
     // ── login ─────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("login con credenciales válidas devuelve mapa con token y datos del usuario")
+    @DisplayName("login con credenciales válidas devuelve mapa con accessToken y datos del usuario")
     void login_conCredencialesValidas_devuelveMapaConToken() {
         LoginDTO dto = new LoginDTO();
         dto.setCorreo("juan@test.cl");
@@ -132,8 +132,9 @@ class UsuarioServiceTest {
 
         Map<String, Object> resultado = usuarioService.login(dto);
 
-        assertThat(resultado).containsKey("token");
-        assertThat(resultado.get("token")).isEqualTo("jwt.token.mock");
+        assertThat(resultado).containsKey("accessToken");
+        assertThat(resultado.get("accessToken")).isEqualTo("jwt.token.mock");
+        assertThat(resultado).doesNotContainKey("token");
         assertThat(resultado.get("rol")).isEqualTo("PACIENTE");
         assertThat(resultado).containsKey("refreshToken");
     }

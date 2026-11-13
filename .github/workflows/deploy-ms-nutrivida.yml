@@ -1,4 +1,4 @@
-name: Deploy ms-nutrivida a EC2
+name: CI/CD ms-nutrivida → EC2
 
 on:
   push:
@@ -6,14 +6,16 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+
+  # Job 1 — Tests unitarios + cobertura JaCoCo
+  test:
+    name: Tests & JaCoCo
     runs-on: ubuntu-latest
+
     steps:
-      # ── 1. Código fuente ───────────────────────────────────────────────
       - name: Checkout código
         uses: actions/checkout@v4
 
-      # ── 2. Compilar JAR en GitHub ──────────────────────────────────────
       - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
@@ -21,11 +23,38 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: Build JAR (skip tests)
+      - name: Ejecutar tests y generar reporte JaCoCo
+        run: mvn -B verify -Pcoverage
+
+      - name: Publicar reporte JaCoCo
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+          retention-days: 14
+
+  # Job 2 — Build JAR y deploy en EC2 (solo si tests pasan)
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: maven
+
+      - name: Build JAR (tests ya corrieron en job anterior)
         run: mvn -q -B clean package -DskipTests
 
-      # ── 3a. Subir docker-compose.yml y Dockerfile ──────────────────────
-      - name: Copiar archivos de configuración a EC2
+      - name: Copiar docker-compose y Dockerfile a EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -35,7 +64,6 @@ jobs:
           source: "docker-compose.yml,Dockerfile"
           target: "/home/${{ secrets.EC2_USER }}/micros/ms-nutrivida"
 
-      # ── 3b. Subir el JAR (strip_components quita el prefijo "target/") ──
       - name: Copiar JAR a EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -47,7 +75,6 @@ jobs:
           target: "/home/${{ secrets.EC2_USER }}/micros/ms-nutrivida"
           strip_components: 1
 
-      # ── 4. Crear .env e iniciar con Docker Compose ─────────────────────
       - name: Deploy con Docker Compose en EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -58,15 +85,15 @@ jobs:
           script: |
             cd /home/${{ secrets.EC2_USER }}/micros/ms-nutrivida
 
-            # Escribir .env con todas las variables sensibles
+            # Escribir .env con variables sensibles
             cat > .env << ENVEOF
             JWT_SECRET=${{ secrets.JWT_SECRET }}
+            DB_USERNAME=${{ secrets.DB_USERNAME }}
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
             CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}
             ENVEOF
 
-            # ── FIX: Apagar buildkit/bake (tu EC2 no tiene buildx) ──
             export DOCKER_BUILDKIT=0
             export COMPOSE_BAKE=false
 
@@ -76,7 +103,7 @@ jobs:
             echo "=== Bajando contenedores ==="
             docker compose down || true
 
-            echo "=== Limpiando caché roto de Docker (SIN borrar volúmenes/DB) ==="
+            echo "=== Limpiando capas rotas (sin borrar volúmenes/DB) ==="
             docker system prune -f
             docker builder prune -f || true
 
@@ -90,19 +117,18 @@ jobs:
             echo "=== Levantando ==="
             docker compose up -d
 
-            # Verificar que el contenedor levantó - espera hasta 60s
-            echo "=== Esperando healthcheck ==="
+            echo "=== Esperando healthcheck (60 s máx) ==="
             for i in $(seq 1 12); do
               if curl -sf http://localhost:9005/actuator/health > /dev/null; then
-                echo " App UP en intento $i"
+                echo "✔ App UP en intento $i"
                 docker compose ps
                 exit 0
               fi
-              echo "Intento $i/12: aún no levanta, esperando 5s..."
+              echo "Intento $i/12: aún no levanta, esperando 5 s..."
               sleep 5
             done
 
-            echo " App no levantó, logs:"
+            echo "✖ App no levantó en 60 s, logs:"
             docker compose ps
             docker compose logs ms-nutrivida --tail 100
             docker compose logs nutrivida-db --tail 30

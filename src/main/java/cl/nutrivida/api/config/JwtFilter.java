@@ -22,36 +22,26 @@ public class JwtFilter extends OncePerRequestFilter {
         this.jwtUtil = jwtUtil;
     }
 
-    // ── ESTO ES LO QUE FALTABA ──
-    // Le dice a Spring: a estas rutas ni siquiera entres al filtro
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getServletPath();
+        String path   = request.getServletPath();
         String method = request.getMethod();
 
-        // Preflight de CORS (Postman no lo usa, pero el frontend sí)
-        if ("OPTIONS".equalsIgnoreCase(method)) {
-            return true;
-        }
+        // Preflight de CORS
+        if ("OPTIONS".equalsIgnoreCase(method)) return true;
 
         // Rutas públicas que NO necesitan token
-        if (path.equals("/api/usuarios/login") && method.equals("POST")) {
-            return true;
-        }
-        if (path.equals("/api/usuarios/registro") && method.equals("POST")) {
-            return true;
-        }
-        if (path.equals("/api/especialistas/activos") && method.equals("GET")) {
-            return true;
-        }
-        if (path.equals("/actuator/health")) {
-            return true;
-        }
-        if (path.equals("/error")) {
-            return true;
-        }
-
-        return false;
+        return switch (path) {
+            case "/api/usuarios/login",
+                 "/api/usuarios/registro",
+                 "/api/usuarios/refresh",   // ← nuevo
+                 "/api/usuarios/logout",    // ← nuevo
+                 "/actuator/health",
+                 "/error"                   -> true;
+            default                         -> path.startsWith("/swagger-ui") ||
+                                               path.startsWith("/v3/api-docs") ||
+                                               (path.equals("/api/especialistas/activos") && "GET".equals(method));
+        };
     }
 
     @Override
@@ -67,7 +57,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
             if (jwtUtil.esValido(token)) {
                 String correo = jwtUtil.obtenerCorreo(token);
-                String rol = jwtUtil.obtenerRol(token);
+                String rol    = jwtUtil.obtenerRol(token);
 
                 // Evita ROLE_ROLE_ADMIN si el rol ya viene con prefijo
                 String authority = rol.startsWith("ROLE_") ? rol : "ROLE_" + rol;

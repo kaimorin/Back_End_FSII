@@ -6,13 +6,13 @@ services:
       - "9005:9005"
     environment:
       DB_URL: jdbc:mysql://db:3306/nutrivida?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      DB_USERNAME: admin
+      DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DRIVER: com.mysql.cj.jdbc.Driver
       SERVER_PORT: 9005
       CORS_ORIGIN: ${CORS_ORIGIN}
       JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRATION_MS: 86400000
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-900000}
     depends_on:
       db:
         condition: service_healthy
@@ -21,8 +21,7 @@ services:
   db:
     image: mysql:8.0
     container_name: nutrivida-db
-    ports:
-      - "3306:3306"
+    
     environment:
       MYSQL_DATABASE: nutrivida
       MYSQL_USER: admin

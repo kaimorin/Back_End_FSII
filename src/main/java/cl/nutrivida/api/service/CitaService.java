@@ -42,7 +42,6 @@ public class CitaService {
         cita.setPacienteApellido(dto.getPacienteApellido());
         cita.setPacienteRut(dto.getPacienteRut());
         cita.setPacienteTelefono(dto.getPacienteTelefono());
-        // Estado y precioBase siempre los fija el backend
         cita.setEstado("Pendiente");
         cita.setPrecioBase(35000);
         return repository.save(cita);

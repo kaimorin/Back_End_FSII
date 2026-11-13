@@ -8,13 +8,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Transactional 
 class CitaControllerTest {
 
     @Autowired MockMvc mvc;
@@ -22,6 +25,7 @@ class CitaControllerTest {
     @Autowired ObjectMapper mapper;
 
     @Test
+    @WithMockUser(username = "admin@nutrivida.cl", roles = {"ADMIN"})
     void listarCitas_devuelveOk() throws Exception {
         mvc.perform(get("/api/citas"))
            .andExpect(status().isOk())
@@ -29,6 +33,7 @@ class CitaControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "admin@nutrivida.cl", roles = {"ADMIN"})
     void crearCita_devuelveCreated() throws Exception {
         Cita cita = new Cita();
         cita.setDoctor("Maria de Judas");
@@ -39,6 +44,7 @@ class CitaControllerTest {
         cita.setPacienteNombre("Test");
         cita.setPacienteApellido("Paciente");
         cita.setPacienteRut("11.111.111-1");
+        cita.setPrecioBase(35000);
 
         mvc.perform(post("/api/citas")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -49,6 +55,7 @@ class CitaControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "admin@nutrivida.cl", roles = {"ADMIN"})
     void obtenerCita_inexistente_devuelve404() throws Exception {
         mvc.perform(get("/api/citas/99999"))
            .andExpect(status().isNotFound());

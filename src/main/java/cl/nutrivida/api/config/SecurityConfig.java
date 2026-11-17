@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -52,7 +53,39 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    // ── 1. Cadena SOLO para Swagger ───────────────────────────────
+    // Esta va primero (@Order(1)) para que no la pise la de la API.
+    // Contra-regla: Swagger siempre pasa, sin JWT, sin rate limit y
+    // con un CSP permisivo que sí deja cargar sus js/css/img.
     @Bean
+    @Order(1)
+    public SecurityFilterChain swaggerFilterChain(HttpSecurity http) throws Exception {
+        http
+            .securityMatcher(
+                "/swagger-ui/**",
+                "/swagger-ui.html",
+                "/v3/api-docs/**",
+                "/swagger-resources/**",
+                "/webjars/**"
+            )
+            .csrf(AbstractHttpConfigurer::disable)
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .headers(headers -> headers
+                .contentSecurityPolicy(csp -> csp
+                    .policyDirectives("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'")
+                )
+                .frameOptions(frame -> frame.sameOrigin())
+                .contentTypeOptions(ct -> {})
+            )
+            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+
+        return http.build();
+    }
+
+    // ── 2. Cadena de la API (la tuya, sin tocar) ───────────────────
+    @Bean
+    @Order(2)
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         ObjectMapper objectMapper = new ObjectMapper();
 
@@ -107,7 +140,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,  "/api/especialistas/activos").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/error").permitAll()
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                // Swagger ya no va acá, va en su propia cadena de arriba
 
                 // ── Solo ADMIN ────────────────────────────────────────
                 .requestMatchers(HttpMethod.GET,    "/api/usuarios/listar").hasRole("ADMIN")
@@ -149,6 +182,8 @@ public class SecurityConfig {
         config.setMaxAge(3600L);
         return new UrlBasedCorsConfigurationSource() {{
             registerCorsConfiguration("/api/**", config);
+            registerCorsConfiguration("/v3/api-docs/**", config);
+            registerCorsConfiguration("/swagger-ui/**", config);
         }};
     }
 }

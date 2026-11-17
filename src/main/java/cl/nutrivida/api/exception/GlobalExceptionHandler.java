@@ -21,11 +21,13 @@ import java.util.Map;
  *   <li>{@link Exception}                       → 500 genérico (evita stacktraces en producción)</li>
  * </ul>
  */
-@RestControllerAdvice
+// FIX: Solo atrapa TUS controladores, NO los de springdoc / actuator.
+// Si no, tu handler se mete en /v3/api-docs y lo rompe.
+@RestControllerAdvice(basePackages = "cl.nutrivida.api.controller")
 public class GlobalExceptionHandler {
 
     // 400  Errores de validación Jakarta @NotBlank, @Email, @Rut
-
+    
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(
             MethodArgumentNotValidException ex) {
@@ -62,10 +64,17 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
+        // FIX: Sin esto nunca vas a ver la causa real en la consola
+        ex.printStackTrace();
+
         Map<String, Object> cuerpo = new HashMap<>();
         cuerpo.put("timestamp", LocalDateTime.now().toString());
         cuerpo.put("status",    HttpStatus.INTERNAL_SERVER_ERROR.value());
         cuerpo.put("error",     "Error interno del servidor");
+        // Temporal para debug: te muestra la causa en el JSON también
+        // Cuando ya funcione, borrá estas 2 líneas
+        cuerpo.put("detalle", String.valueOf(ex.getMessage()));
+        cuerpo.put("clase", ex.getClass().getName());
 
         return ResponseEntity.internalServerError().body(cuerpo);
     }

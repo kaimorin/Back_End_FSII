@@ -19,6 +19,12 @@ spring:
 
 server:
   port: ${SERVER_PORT:9005}
+  error:
+   
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: always
+    include-exception: true
 
 app:
   cors:
@@ -33,3 +39,19 @@ management:
     web:
       exposure:
         include: health
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    config-url: /v3/api-docs/swagger-config
+  show-actuator: false
+
+logging:
+  level:
+    org.springdoc: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: WARN

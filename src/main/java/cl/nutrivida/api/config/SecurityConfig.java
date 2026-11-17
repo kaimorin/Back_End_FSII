@@ -64,7 +64,9 @@ public class SecurityConfig {
             .securityMatcher(
                 "/swagger-ui/**",
                 "/swagger-ui.html",
+                "/v3/api-docs",
                 "/v3/api-docs/**",
+                "/v3/api-docs.yaml",
                 "/swagger-resources/**",
                 "/webjars/**"
             )
@@ -182,6 +184,7 @@ public class SecurityConfig {
         config.setMaxAge(3600L);
         return new UrlBasedCorsConfigurationSource() {{
             registerCorsConfiguration("/api/**", config);
+            registerCorsConfiguration("/v3/api-docs", config);
             registerCorsConfiguration("/v3/api-docs/**", config);
             registerCorsConfiguration("/swagger-ui/**", config);
         }};

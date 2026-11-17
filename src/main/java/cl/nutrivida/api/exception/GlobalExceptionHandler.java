@@ -1,5 +1,6 @@
 package cl.nutrivida.api.exception;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -21,13 +22,16 @@ import java.util.Map;
  *   <li>{@link Exception}                       → 500 genérico (evita stacktraces en producción)</li>
  * </ul>
  */
-// FIX: Solo atrapa TUS controladores, NO los de springdoc / actuator.
-// Si no, tu handler se mete en /v3/api-docs y lo rompe.
+// FIX 1: Solo atrapa TUS controladores, NO los de springdoc / actuator.
+// FIX 2: @Hidden hace que springdoc NI SIQUIERA intente leer este handler.
+// Sin esto, springdoc entra a getGenericMapResponse() y revienta con
+// NoSuchMethodError: ControllerAdviceBean.<init>(Object)
+@Hidden
 @RestControllerAdvice(basePackages = "cl.nutrivida.api.controller")
 public class GlobalExceptionHandler {
 
     // 400  Errores de validación Jakarta @NotBlank, @Email, @Rut
-    
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(
             MethodArgumentNotValidException ex) {
@@ -46,7 +50,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(cuerpo);
     }
 
-    // Excepciones de negocio  
+    // Excepciones de negocio
 
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, Object>> handleResponseStatus(
@@ -64,7 +68,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
-        // FIX: Sin esto nunca vas a ver la causa real en la consola
         ex.printStackTrace();
 
         Map<String, Object> cuerpo = new HashMap<>();

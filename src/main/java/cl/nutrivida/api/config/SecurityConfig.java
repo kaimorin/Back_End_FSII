@@ -17,10 +17,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import cl.nutrivida.api.config.RateLimitFilter;
 import java.util.List;
 import java.util.Map;
 
@@ -29,15 +31,15 @@ import java.util.Map;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+    private final RateLimitFilter rateLimitFilter;
 
     @Value("${app.cors.allowed-origin}")
     private String allowedOrigin;
 
-    public SecurityConfig(JwtFilter jwtFilter) {
+    public SecurityConfig(JwtFilter jwtFilter, RateLimitFilter rateLimitFilter) {
         this.jwtFilter = jwtFilter;
+        this.rateLimitFilter = rateLimitFilter;
     }
-
-    // Beans de seguridad 
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -50,8 +52,6 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    // ── Filter chain ──────────────────────────────────────────────────────
-
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -61,7 +61,22 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-            // Respuesta JSON para 401 (token ausente / inválido)
+            // ── Cabeceras de seguridad HTTP ────────────────────────────
+            .headers(headers -> headers
+                .contentSecurityPolicy(csp -> csp
+                    .policyDirectives("default-src 'none'; frame-ancestors 'none'"))
+                .referrerPolicy(ref -> ref
+                    .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+                .frameOptions(frame -> frame.deny())
+                .contentTypeOptions(ct -> {})   // X-Content-Type-Options: nosniff
+                .httpStrictTransportSecurity(hsts -> hsts
+                    .includeSubDomains(true)
+                    .maxAgeInSeconds(31536000))
+                .permissionsPolicyHeader(pp -> pp
+                    .policy("geolocation=(), microphone=(), camera=()"))
+            )
+
+            // Respuesta JSON para 401
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {
                     response.setStatus(HttpStatus.UNAUTHORIZED.value());
@@ -71,7 +86,7 @@ public class SecurityConfig {
                             Map.of("error",   "No autenticado",
                                    "mensaje", "Se requiere un token JWT válido")));
                 })
-                // Respuesta JSON para 403 (token válido pero sin permisos)
+                // Respuesta JSON para 403
                 .accessDeniedHandler((request, response, accessDeniedException) -> {
                     response.setStatus(HttpStatus.FORBIDDEN.value());
                     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
@@ -84,14 +99,13 @@ public class SecurityConfig {
 
             .authorizeHttpRequests(auth -> auth
 
-                // ── Rutas públicas (sin token) ─────────────────────────
+                // ── Rutas públicas ─────────────────────────────────────
                 .requestMatchers(HttpMethod.POST, "/api/usuarios/login").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/usuarios/registro").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/usuarios/refresh").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/usuarios/logout").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/api/especialistas/activos").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
-                .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
@@ -107,16 +121,16 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PATCH,  "/api/citas/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/citas/**").hasRole("ADMIN")
 
-                // ── ADMIN y PACIENTE (autenticados) ───────────────────
+                // ── Autenticados ───────────────────────────────────────
                 .requestMatchers(HttpMethod.POST, "/api/pacientes").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/citas").authenticated()
                 .requestMatchers(HttpMethod.GET,  "/api/citas/paciente/**").authenticated()
                 .requestMatchers(HttpMethod.GET,  "/api/citas/**").authenticated()
                 .requestMatchers(HttpMethod.PUT,  "/api/usuarios/**").authenticated()
 
-                // cualquier otra ruta requiere autenticación
                 .anyRequest().authenticated()
             )
+            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -127,7 +141,12 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(allowedOrigin));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
+        // Solo cabeceras necesarias (no wildcard en producción)
+        config.setAllowedHeaders(List.of(
+            "Authorization", "Content-Type", "Accept", "X-Requested-With"));
+        config.setExposedHeaders(List.of("Authorization"));
+        config.setAllowCredentials(false);
+        config.setMaxAge(3600L);
         return new UrlBasedCorsConfigurationSource() {{
             registerCorsConfiguration("/api/**", config);
         }};

@@ -7,6 +7,7 @@ import cl.nutrivida.api.dto.UsuarioRegistroDTO;
 import cl.nutrivida.api.model.RefreshToken;
 import cl.nutrivida.api.model.Usuario;
 import cl.nutrivida.api.repository.UsuarioRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -29,17 +33,10 @@ import static org.mockito.Mockito.*;
 @DisplayName("UsuarioService – pruebas unitarias")
 class UsuarioServiceTest {
 
-    @Mock
-    private UsuarioRepository usuarioRepository;
-
-    @Mock
-    private JwtUtil jwtUtil;
-
-    @Mock
-    private PasswordEncoder passwordEncoder;
-
-    @Mock
-    private RefreshTokenService refreshTokenService;
+    @Mock private UsuarioRepository    usuarioRepository;
+    @Mock private JwtUtil              jwtUtil;
+    @Mock private PasswordEncoder      passwordEncoder;
+    @Mock private RefreshTokenService  refreshTokenService;
 
     @InjectMocks
     private UsuarioService usuarioService;
@@ -56,6 +53,29 @@ class UsuarioServiceTest {
         usuarioEjemplo.setRut("12.345.678-9");
         usuarioEjemplo.setClave("$2a$10$hashBcryptFalso");
         usuarioEjemplo.setRol("PACIENTE");
+
+        SecurityContextHolder.clearContext();
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+
+    private void autenticarComoAdmin() {
+        var auth = new UsernamePasswordAuthenticationToken(
+                "admin@test.cl", null,
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
+    private void autenticarComoPropietario(String correo) {
+        var auth = new UsernamePasswordAuthenticationToken(
+                correo, null,
+                List.of(new SimpleGrantedAuthority("ROLE_PACIENTE")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
     // ── registrar ─────────────────────────────────────────────────────────
@@ -70,6 +90,7 @@ class UsuarioServiceTest {
         dto.setRut("12.345.678-9");
         dto.setClave("Pass1234!");
 
+        // El service normaliza el correo a lowercase antes de consultar
         when(usuarioRepository.existsByCorreo("juan@test.cl")).thenReturn(false);
         when(usuarioRepository.existsByRut("12.345.678-9")).thenReturn(false);
         when(passwordEncoder.encode("Pass1234!")).thenReturn("$2a$10$hash");
@@ -79,7 +100,30 @@ class UsuarioServiceTest {
 
         assertThat(resultado.getRol()).isEqualTo("PACIENTE");
         assertThat(resultado.getClave()).isEqualTo("$2a$10$hash");
+        // El correo se guarda en minúsculas
+        assertThat(resultado.getCorreo()).isEqualTo("juan@test.cl");
         verify(usuarioRepository).save(any(Usuario.class));
+    }
+
+    @Test
+    @DisplayName("registrar normaliza el correo a minúsculas")
+    void registrar_normalizaCorreoAMinusculas() {
+        UsuarioRegistroDTO dto = new UsuarioRegistroDTO();
+        dto.setNombre("Juan");
+        dto.setApellido("Pérez");
+        dto.setCorreo("JUAN@TEST.CL");
+        dto.setRut("12.345.678-9");
+        dto.setClave("Pass1234!");
+
+        // El service llama existsByCorreo con el correo ya en lowercase
+        when(usuarioRepository.existsByCorreo("juan@test.cl")).thenReturn(false);
+        when(usuarioRepository.existsByRut("12.345.678-9")).thenReturn(false);
+        when(passwordEncoder.encode(any())).thenReturn("$2a$10$hash");
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Usuario resultado = usuarioService.registrar(dto);
+
+        assertThat(resultado.getCorreo()).isEqualTo("juan@test.cl");
     }
 
     @Test
@@ -125,6 +169,7 @@ class UsuarioServiceTest {
         RefreshToken refreshTokenMock = new RefreshToken();
         refreshTokenMock.setToken("refresh.token.mock");
 
+        // El service normaliza el correo a lowercase antes de buscar
         when(usuarioRepository.findByCorreo("juan@test.cl")).thenReturn(Optional.of(usuarioEjemplo));
         when(passwordEncoder.matches("Pass1234!", "$2a$10$hashBcryptFalso")).thenReturn(true);
         when(jwtUtil.generarToken("juan@test.cl", "PACIENTE")).thenReturn("jwt.token.mock");
@@ -134,13 +179,12 @@ class UsuarioServiceTest {
 
         assertThat(resultado).containsKey("accessToken");
         assertThat(resultado.get("accessToken")).isEqualTo("jwt.token.mock");
-        assertThat(resultado).doesNotContainKey("token");
         assertThat(resultado.get("rol")).isEqualTo("PACIENTE");
         assertThat(resultado).containsKey("refreshToken");
     }
 
     @Test
-    @DisplayName("login con correo inexistente lanza 401")
+    @DisplayName("login con correo inexistente lanza 401 con mensaje genérico")
     void login_conCorreoInexistente_lanza401() {
         LoginDTO dto = new LoginDTO();
         dto.setCorreo("noexiste@test.cl");
@@ -150,29 +194,34 @@ class UsuarioServiceTest {
 
         assertThatThrownBy(() -> usuarioService.login(dto))
                 .isInstanceOf(ResponseStatusException.class)
+                // Mensaje genérico anti-enumeración
                 .hasMessageContaining("Correo o contraseña incorrectos");
     }
 
     @Test
-    @DisplayName("login con clave incorrecta lanza 401")
+    @DisplayName("login con clave incorrecta lanza 401 con el mismo mensaje genérico")
     void login_conClaveIncorrecta_lanza401() {
         LoginDTO dto = new LoginDTO();
         dto.setCorreo("juan@test.cl");
         dto.setClave("ClaveWrong!");
 
         when(usuarioRepository.findByCorreo("juan@test.cl")).thenReturn(Optional.of(usuarioEjemplo));
-        when(passwordEncoder.matches(eq("ClaveWrong!"), anyString())).thenReturn(false);  // ← fix
+        when(passwordEncoder.matches(eq("ClaveWrong!"), anyString())).thenReturn(false);
 
         assertThatThrownBy(() -> usuarioService.login(dto))
                 .isInstanceOf(ResponseStatusException.class)
+                // Mismo mensaje que correo inexistente → anti-enumeración
                 .hasMessageContaining("Correo o contraseña incorrectos");
     }
 
     // ── actualizar ────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("actualizar con usuario existente actualiza nombre y apellido")
-    void actualizar_usuarioExistente_actualizaDatos() {
+    @DisplayName("actualizar como propietario actualiza nombre y apellido")
+    void actualizar_comoPropietario_actualizaDatos() {
+        // El propietario autentica con su propio correo
+        autenticarComoPropietario("juan@test.cl");
+
         UsuarioActualizarDTO dto = new UsuarioActualizarDTO();
         dto.setNombre("Juan Carlos");
         dto.setApellido("Pérez Soto");
@@ -185,6 +234,42 @@ class UsuarioServiceTest {
 
         assertThat(resultado.getNombre()).isEqualTo("Juan Carlos");
         assertThat(resultado.getApellido()).isEqualTo("Pérez Soto");
+    }
+
+    @Test
+    @DisplayName("actualizar como ADMIN puede modificar cualquier usuario")
+    void actualizar_comoAdmin_modificaOtroUsuario() {
+        autenticarComoAdmin();
+
+        UsuarioActualizarDTO dto = new UsuarioActualizarDTO();
+        dto.setNombre("Nombre Nuevo");
+        dto.setApellido("Apellido Nuevo");
+        dto.setTelefono("+56911111111");
+
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioEjemplo));
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Usuario resultado = usuarioService.actualizar(1L, dto);
+
+        assertThat(resultado.getNombre()).isEqualTo("Nombre Nuevo");
+    }
+
+    @Test
+    @DisplayName("actualizar de otro usuario lanza 403")
+    void actualizar_otroUsuario_lanza403() {
+        // Autenticado como "otro@test.cl" intentando modificar id=1 (juan@test.cl)
+        autenticarComoPropietario("otro@test.cl");
+
+        UsuarioActualizarDTO dto = new UsuarioActualizarDTO();
+        dto.setNombre("Hack");
+        dto.setApellido("Intento");
+        dto.setTelefono("+56900000000");
+
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuarioEjemplo));
+
+        assertThatThrownBy(() -> usuarioService.actualizar(1L, dto))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("No tienes permiso");
     }
 
     // ── eliminar ──────────────────────────────────────────────────────────

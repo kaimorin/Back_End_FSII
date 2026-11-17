@@ -10,6 +10,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -55,6 +58,25 @@ class CitaServiceTest {
         citaDtoEjemplo.setPacienteNombre("Juan");
         citaDtoEjemplo.setPacienteApellido("Pérez");
         citaDtoEjemplo.setPacienteRut("12.345.678-9");
+
+        // SecurityContext vacío por defecto (sin usuario)
+        SecurityContextHolder.clearContext();
+    }
+
+    // ── Helpers para fijar contexto de seguridad ──────────────────────────
+
+    private void autenticarComoAdmin() {
+        var auth = new UsernamePasswordAuthenticationToken(
+                "admin@test.cl", null,
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
+    private void autenticarComoPaciente(String correo) {
+        var auth = new UsernamePasswordAuthenticationToken(
+                correo, null,
+                List.of(new SimpleGrantedAuthority("ROLE_PACIENTE")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
     // ── listarTodas ───────────────────────────────────────────────────────
@@ -110,14 +132,34 @@ class CitaServiceTest {
     // ── cambiarEstado ─────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("cambiarEstado con estado válido actualiza la cita")
-    void cambiarEstado_conEstadoValido_actualizaEstado() {
+    @DisplayName("cambiarEstado con estado válido 'Confirmada' actualiza la cita")
+    void cambiarEstado_conEstadoConfirmada_actualizaEstado() {
         when(citaRepository.findById(1L)).thenReturn(Optional.of(citaEjemplo));
         when(citaRepository.save(any(Cita.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Cita resultado = citaService.cambiarEstado(1L, "Confirmado");
+        Cita resultado = citaService.cambiarEstado(1L, "Confirmada");
 
-        assertThat(resultado.getEstado()).isEqualTo("Confirmado");
+        assertThat(resultado.getEstado()).isEqualTo("Confirmada");
+    }
+
+    @Test
+    @DisplayName("cambiarEstado con estado válido 'Cancelada' actualiza la cita")
+    void cambiarEstado_conEstadoCancelada_actualizaEstado() {
+        when(citaRepository.findById(1L)).thenReturn(Optional.of(citaEjemplo));
+        when(citaRepository.save(any(Cita.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Cita resultado = citaService.cambiarEstado(1L, "Cancelada");
+
+        assertThat(resultado.getEstado()).isEqualTo("Cancelada");
+    }
+
+    @Test
+    @DisplayName("cambiarEstado con estado inválido lanza 400")
+    void cambiarEstado_conEstadoInvalido_lanza400() {
+        // "Confirmado" no está en la lista de estados válidos
+        assertThatThrownBy(() -> citaService.cambiarEstado(1L, "Confirmado"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Estado inválido");
     }
 
     @Test
@@ -125,7 +167,7 @@ class CitaServiceTest {
     void cambiarEstado_conEstadoVacio_lanza400() {
         assertThatThrownBy(() -> citaService.cambiarEstado(1L, ""))
                 .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("El estado no puede estar vacío");  // ← fix
+                .hasMessageContaining("El estado no puede estar vacío");
     }
 
     @Test
@@ -157,7 +199,7 @@ class CitaServiceTest {
                 .hasMessageContaining("Cita no encontrada");
     }
 
-    // ── porEstado y porPaciente ───────────────────────────────────────────
+    // ── porEstado ─────────────────────────────────────────────────────────
 
     @Test
     @DisplayName("porEstado delega en repositorio")
@@ -169,9 +211,23 @@ class CitaServiceTest {
         assertThat(resultado).containsExactly(citaEjemplo);
     }
 
+    // ── porPaciente ───────────────────────────────────────────────────────
+
     @Test
-    @DisplayName("porPaciente delega en repositorio")
-    void porPaciente_devuelveResultadosDelRepo() {
+    @DisplayName("porPaciente como ADMIN devuelve citas del paciente")
+    void porPaciente_comoAdmin_devuelveResultados() {
+        autenticarComoAdmin();
+        when(citaRepository.findByPacienteRut("12.345.678-9")).thenReturn(List.of(citaEjemplo));
+
+        List<Cita> resultado = citaService.porPaciente("12.345.678-9");
+
+        assertThat(resultado).containsExactly(citaEjemplo);
+    }
+
+    @Test
+    @DisplayName("porPaciente como PACIENTE devuelve sus propias citas")
+    void porPaciente_comoPaciente_devuelveResultados() {
+        autenticarComoPaciente("juan@test.cl");
         when(citaRepository.findByPacienteRut("12.345.678-9")).thenReturn(List.of(citaEjemplo));
 
         List<Cita> resultado = citaService.porPaciente("12.345.678-9");

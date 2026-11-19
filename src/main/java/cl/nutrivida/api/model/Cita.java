@@ -2,7 +2,6 @@ package cl.nutrivida.api.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
 @Entity
 @Table(name = "citas")
@@ -12,46 +11,53 @@ public class Cita {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Referencia al paciente (nombre del doctor como en la vista Agenda)
+    // ID del especialista seleccionado. Se guarda además el nombre como fotografía histórica.
+    private Long especialistaId;
+
     @NotBlank(message = "El nombre del doctor es obligatorio")
     private String doctor;
 
-    // nutricion-clinica | nutricion-deportiva | salud-digestiva | control-peso
     @NotBlank(message = "La especialidad es obligatoria")
     private String especialidad;
 
-    // Presencial | Online
     @NotBlank(message = "La modalidad es obligatoria")
     private String modalidad;
 
-    // Fecha como texto, ej: "Lunes, 10 de febrero de 2025"
+    // Fecha legible para mostrarla en la aplicación.
     @NotBlank(message = "La fecha es obligatoria")
     private String fecha;
 
-    // Hora como texto, ej: "11:00 AM"
+    // Fecha normalizada yyyy-MM-dd para validar y consultar reservas.
+    private String fechaISO;
+
     @NotBlank(message = "La hora es obligatoria")
     private String hora;
 
-    // Método de pago: webpay | mercadopago
     private String metodoPago;
 
-    // Confirmado | Pendiente | Cancelado | Atendido
     @Column(nullable = false)
     private String estado = "Pendiente";
 
-    // Datos del paciente (desnormalizados para confirmación rápida)
     private String pacienteNombre;
     private String pacienteApellido;
     private String pacienteRut;
     private String pacienteTelefono;
 
-    // Precio en pesos chilenos
+    // Estos montos quedan guardados en la cita y no cambian si el especialista modifica su precio.
+    @Column(nullable = false, columnDefinition = "INT NOT NULL DEFAULT 35000")
     private int precioBase = 35000;
 
-    // ── Getters & Setters ──────────────────────────────────────────────
+    @Column(nullable = false, columnDefinition = "INT NOT NULL DEFAULT 6650")
+    private int iva = 6650;
+
+    @Column(nullable = false, columnDefinition = "INT NOT NULL DEFAULT 41650")
+    private int total = 41650;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public Long getEspecialistaId() { return especialistaId; }
+    public void setEspecialistaId(Long especialistaId) { this.especialistaId = especialistaId; }
 
     public String getDoctor() { return doctor; }
     public void setDoctor(String doctor) { this.doctor = doctor; }
@@ -64,6 +70,9 @@ public class Cita {
 
     public String getFecha() { return fecha; }
     public void setFecha(String fecha) { this.fecha = fecha; }
+
+    public String getFechaISO() { return fechaISO; }
+    public void setFechaISO(String fechaISO) { this.fechaISO = fechaISO; }
 
     public String getHora() { return hora; }
     public void setHora(String hora) { this.hora = hora; }
@@ -88,4 +97,10 @@ public class Cita {
 
     public int getPrecioBase() { return precioBase; }
     public void setPrecioBase(int precioBase) { this.precioBase = precioBase; }
+
+    public int getIva() { return iva; }
+    public void setIva(int iva) { this.iva = iva; }
+
+    public int getTotal() { return total; }
+    public void setTotal(int total) { this.total = total; }
 }

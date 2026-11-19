@@ -59,3 +59,13 @@ INSERT INTO usuarios (nombre, apellido, correo, rut, telefono, recibir_noticias,
 SELECT 'Admin', 'Sistema', 'admin@nutrivida.cl', '11.111.111-1', '+56 9 0000 0000', false, 'ADMIN',
        '$2a$10$S2Hda4YeEgSVLt7T9m5xqueyVTR2KJXQxUendObaiS5aDvMrh3Lmq'
 WHERE NOT EXISTS (SELECT 1 FROM usuarios WHERE correo = 'admin@nutrivida.cl');
+-- Normaliza el precio inicial para especialistas antiguos al agregar la columna.
+UPDATE especialistas
+SET precio_base = 35000
+WHERE precio_base IS NULL OR precio_base <= 0;
+
+-- Recalcula montos de citas antiguas si la migración dejó esos campos en cero.
+UPDATE citas
+SET iva = ROUND(precio_base * 0.19),
+    total = precio_base + ROUND(precio_base * 0.19)
+WHERE iva IS NULL OR iva = 0 OR total IS NULL OR total = 0;

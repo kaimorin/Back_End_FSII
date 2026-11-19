@@ -1,7 +1,8 @@
 package cl.nutrivida.api;
 
-import cl.nutrivida.api.model.Cita;
+import cl.nutrivida.api.model.Especialista;
 import cl.nutrivida.api.repository.CitaRepository;
+import cl.nutrivida.api.repository.EspecialistaRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,16 +13,21 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Map;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Transactional 
+@Transactional
 class CitaControllerTest {
 
     @Autowired MockMvc mvc;
     @Autowired CitaRepository repo;
+    @Autowired EspecialistaRepository especialistaRepo;
     @Autowired ObjectMapper mapper;
 
     @Test
@@ -34,29 +40,44 @@ class CitaControllerTest {
 
     @Test
     @WithMockUser(username = "admin@nutrivida.cl", roles = {"ADMIN"})
-    void crearCita_devuelveCreated() throws Exception {
-        Cita cita = new Cita();
-        cita.setDoctor("Maria de Judas");
-        cita.setEspecialidad("control-peso");
-        cita.setModalidad("Presencial");
-        cita.setFecha("Lunes, 10 de marzo de 2025");
-        cita.setHora("10:00 AM");
-        cita.setPacienteNombre("Test");
-        cita.setPacienteApellido("Paciente");
-        cita.setPacienteRut("11.111.111-1");
-        cita.setPrecioBase(35000);
+    void crearCita_devuelveCreatedYCalculaTotales() throws Exception {
+        Especialista especialista = new Especialista();
+        especialista.setNombre("Maria de Judas");
+        especialista.setEspecialidad("Nutrición Clínica");
+        especialista.setModalidad("Presencial y Online");
+        especialista.setPrecioBase(40000);
+        especialista.setActivo(true);
+        especialista = especialistaRepo.save(especialista);
+
+        LocalDate fecha = LocalDate.now(ZoneId.of("America/Santiago")).plusDays(1);
+        while (fecha.getDayOfWeek().getValue() == 7) fecha = fecha.plusDays(1);
+
+        Map<String, Object> datos = Map.of(
+                "especialistaId", especialista.getId(),
+                "modalidad", "Presencial",
+                "fecha", "Fecha futura de prueba",
+                "fechaISO", fecha.toString(),
+                "hora", "11:00 AM",
+                "pacienteNombre", "Test",
+                "pacienteApellido", "Paciente",
+                "pacienteRut", "11.111.111-1"
+        );
 
         mvc.perform(post("/api/citas")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(mapper.writeValueAsString(cita)))
+                .content(mapper.writeValueAsString(datos)))
            .andExpect(status().isCreated())
            .andExpect(jsonPath("$.id").isNumber())
-           .andExpect(jsonPath("$.estado").value("Pendiente"));
+           .andExpect(jsonPath("$.estado").value("Pendiente"))
+           .andExpect(jsonPath("$.doctor").value("Maria de Judas"))
+           .andExpect(jsonPath("$.precioBase").value(40000))
+           .andExpect(jsonPath("$.iva").value(7600))
+           .andExpect(jsonPath("$.total").value(47600));
     }
 
     @Test
     @WithMockUser(username = "admin@nutrivida.cl", roles = {"ADMIN"})
-    void obtenerCita_inexistente_devuelve404() throws Exception {
+    void obtenerCita_inexistenteDevuelve404() throws Exception {
         mvc.perform(get("/api/citas/99999"))
            .andExpect(status().isNotFound());
     }

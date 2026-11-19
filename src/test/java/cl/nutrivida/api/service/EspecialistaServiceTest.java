@@ -39,12 +39,14 @@ class EspecialistaServiceTest {
         especialistaEjemplo.setNombre("Dr. Carlos Ruiz");
         especialistaEjemplo.setEspecialidad("nutricion-clinica");
         especialistaEjemplo.setModalidad("Presencial");
+        especialistaEjemplo.setPrecioBase(42000);
         especialistaEjemplo.setActivo(true);
 
         especialistaDtoEjemplo = new EspecialistaDTO();
         especialistaDtoEjemplo.setNombre("Dr. Carlos Ruiz");
         especialistaDtoEjemplo.setEspecialidad("nutricion-clinica");
         especialistaDtoEjemplo.setModalidad("Presencial");
+        especialistaDtoEjemplo.setPrecioBase(42000);
         especialistaDtoEjemplo.setActivo(true);
     }
 
@@ -58,6 +60,7 @@ class EspecialistaServiceTest {
         Especialista resultado = especialistaService.crear(especialistaDtoEjemplo);
 
         assertThat(resultado.getNombre()).isEqualTo("Dr. Carlos Ruiz");
+        assertThat(resultado.getPrecioBase()).isEqualTo(42000);
         assertThat(resultado.isActivo()).isTrue();
         verify(especialistaRepository).save(any(Especialista.class));
     }
